@@ -1,0 +1,7 @@
+ra,range
+ve,vector
+re,return
+pu,push_back
+ap,append
+in,insert
+li,list

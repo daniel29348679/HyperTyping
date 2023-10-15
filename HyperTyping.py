@@ -3,11 +3,12 @@ import keyboard as kb
 import time
 import threading
 
-combo_time = 100  # ms
+combo_time = 10  # ms
+print_string_delay = 0  # ms
 
 
 def write_and_anti(str):
-    kb.write(str)
+    kb.write(str, delay=print_string_delay * 0.001)
     kb.press("shift")
     for _ in range(len(str)):
         kb.send("left")
@@ -62,11 +63,11 @@ def callback(x):
             char_time_up_queue_lock.acquire()
             char_time_up_queue.append((x.name, time.monotonic_ns()))
             char_time_up_queue_lock.release()
-            kb.call_later(find_word, (), combo_time * 0.001 * 2)
+            kb.call_later(check_word, (), combo_time * 0.001 * 2)
             print(char_time_up_queue)
 
 
-def find_word():
+def check_word():
     global char_time_up_queue
     print("find_word")
     char_time_up_queue_lock.acquire()
@@ -83,19 +84,43 @@ def find_word():
         char_time_up_queue_lock.release()
 
         pressed_keys.sort()
-        # print(pressed_keys)
-        if pressed_keys == ["b", "c"]:
-            kb.write("\b\bbeacues")
+        pressed_keys = tuple(pressed_keys)
+        find_word(pressed_keys)
         return
     char_time_up_queue_lock.release()
+
+
+def find_word(keys):
+    global word_dict
+    word_dict_lock.acquire()
+    if keys in word_dict:
+        for _ in range(len(keys)):
+            kb.send("backspace")
+        kb.write(word_dict[keys])
+    word_dict_lock.release()
+
+
+def init_word_dict():
+    global word_dict
+    with open("word_dict.txt", "r") as f:
+        for line in f:
+            line = line.strip()
+            [keyword, word] = line.split(",")
+            keys = [ch for ch in keyword]
+            keys.sort()
+            keys = tuple(keys)
+            word_dict[keys] = word
+            print(keys, word)
 
 
 char_time_up_queue_lock = threading.Lock()
 char_time_up_queue = []
 
+word_dict = {}
+word_dict_lock = threading.Lock()
+
 if __name__ == "__main__":
-    time.sleep(1)
-    write_and_anti("'esc+s' -> Setting, 'esc+q' -> Quit")
+    init_word_dict()
     kb.hook(callback)
 
     while True:
@@ -103,10 +128,30 @@ if __name__ == "__main__":
         hotkey = kb.read_hotkey()
         kb.stash_state()
         print(hotkey)
-        if hotkey == "esc+q":
-            break
+        if hotkey == "esc+h":
+            kb.send("backspace")
+            write_and_anti("'s' -> Setting, 'q' -> Quit HyperTyping")
+            hotkey = kb.read_hotkey()
+            kb.stash_state()
 
-    kb.write("\b")
+            if hotkey == "q":
+                break
+            if hotkey == "s":
+                kb.send("backspace")
+                write_and_anti("'a' -> All word dictionary, 'q' -> Quit")
+                hotkey = kb.read_hotkey()
+                kb.stash_state()
+
+                if hotkey == "a":
+                    kb.send("backspace")
+                    word_dict_lock.acquire()
+                    for keys, word in word_dict.items():
+                        print(str(keys) + " -> " + word)
+                    word_dict_lock.release()
+                elif hotkey == "q":
+                    kb.send("backspace")
+
+    kb.send("backspace")
     write_and_anti("Quit HyperTyping successful!!!!")
 
 # %%
