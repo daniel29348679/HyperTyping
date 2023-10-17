@@ -121,6 +121,8 @@ word_dict_lock = threading.Lock()
 
 if __name__ == "__main__":
     init_word_dict()
+    time.sleep(2)
+    write_and_anti("'esc+h' -> Menu, 'esc+q' -> Quit HyperTyping")
     kb.hook(callback)
 
     while True:
@@ -148,8 +150,14 @@ if __name__ == "__main__":
                     for keys, word in word_dict.items():
                         print(str(keys) + " -> " + word)
                     word_dict_lock.release()
-                elif hotkey == "q":
+                    continue
+                if hotkey == "q":
                     kb.send("backspace")
+                    continue
+            continue
+
+        elif hotkey == "esc+q":
+            break
 
     kb.send("backspace")
     write_and_anti("Quit HyperTyping successful!!!!")
